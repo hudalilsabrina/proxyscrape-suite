@@ -89,3 +89,16 @@ data/alive.json      # proxy hidup
 
 `data/proxies.txt` (hasil `export`) bisa langsung dipakai suite lain, mis.
 `grok-suite/batch.py --proxy-file data/proxies.txt`.
+
+## 🔗 Integrasi dengan grok-suite
+
+Command `xai` memfilter proxy yang benar-benar bisa mencapai `accounts.x.ai`
+(berguna untuk rotasi IP di grok-suite):
+
+```bash
+./run.sh xai                    # uji semua proxy berguna -> data/proxies_xai.txt
+./run.sh xai --limit 100        # batasi jumlah
+./run.sh xai --target https://... # target lain
+```
+
+grok-suite memakainya otomatis lewat `./run.sh refresh-proxies`.

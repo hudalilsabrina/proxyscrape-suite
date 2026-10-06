@@ -115,6 +115,54 @@ def cmd_list():
     C.print(f"proto: {dict(Counter(p['proto'] for p in alive))}")
 
 
+def cmd_xai(limit=0, workers=30, timeout=15, target="https://accounts.x.ai/sign-up?redirect=grok-com"):
+    """Filter proxy yang bisa mencapai target (default accounts.x.ai) -> file txt.
+
+    Berguna untuk grok-suite (rotasi IP anti-flag). Hanya proxy non-transparan
+    yang diuji.
+    """
+    import concurrent.futures as cf
+    import urllib.error
+    import urllib.request
+
+    alive = _load(ALIVE)
+    useful = [p for p in alive if not p.get("transparent")]
+    http_ones = [p for p in useful if p["proto"] == "http"]
+    if limit:
+        http_ones = http_ones[:limit]
+    if not http_ones:
+        C.print("[yellow]Tidak ada proxy http berguna. Jalankan check dulu.[/]")
+        return
+    C.print(f"[cyan]Uji {len(http_ones)} proxy http -> {target}[/]")
+    ua = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+          "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+
+    def reach(p):
+        host, port = p["host"], p["port"]
+        try:
+            op = urllib.request.build_opener(urllib.request.ProxyHandler(
+                {"http": f"http://{host}:{port}", "https": f"http://{host}:{port}"}))
+            req = urllib.request.Request(target, headers={"User-Agent": ua})
+            r = op.open(req, timeout=timeout)
+            return {**p, "target_status": r.status}
+        except urllib.error.HTTPError as e:
+            return {**p, "target_status": e.code}
+        except Exception:
+            return None
+
+    ok = []
+    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+        for r in ex.map(reach, http_ones):
+            if r and r.get("target_status") in (200, 403):
+                ok.append(r)
+                C.print(f"  OK {r['raw']:<42} status={r['target_status']} egress={r.get('egress','')[:24]}")
+
+    out = DATA / "proxies_xai.txt"
+    out.write_text("\n".join(p["raw"] for p in ok) + "\n")
+    _save(DATA / "proxies_xai.json", ok)
+    C.print(f"[green]{len(ok)}/{len(http_ones)} bisa capai target -> {out}[/]")
+
+
 def cmd_export(fmt, no_transparent=False):
     alive = _load(ALIVE)
     if no_transparent:
@@ -159,6 +207,11 @@ def main():
     up.add_argument("--ports", default=None)
     up.add_argument("--proto", default=None)
     sub.add_parser("list")
+    xa = sub.add_parser("xai")
+    xa.add_argument("--limit", type=int, default=0)
+    xa.add_argument("--workers", type=int, default=30)
+    xa.add_argument("--timeout", type=int, default=15)
+    xa.add_argument("--target", default="https://accounts.x.ai/sign-up?redirect=grok-com")
     ex = sub.add_parser("export")
     ex.add_argument("--format", default="txt", choices=["txt", "ipport", "json", "csv"])
     ex.add_argument("--no-transparent", action="store_true", help="buang proxy transparan (egress = IP kita)")
@@ -171,6 +224,8 @@ def main():
         cmd_update(a.workers, a.timeout, a.limit, a.ports, a.proto)
     elif a.cmd == "list":
         cmd_list()
+    elif a.cmd == "xai":
+        cmd_xai(a.limit, a.workers, a.timeout, a.target)
     elif a.cmd == "export":
         cmd_export(a.format, a.no_transparent)
     else:
