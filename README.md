@@ -43,7 +43,7 @@ Parameter `check`/`update`: `--workers` (default 200), `--timeout` (12s),
 
 # 2. validasi (hanya port yang bisa dijangkau, lebih cepat)
 ./run.sh check --ports 80,443,8080 --workers 300
-#   -> 50 proxy hidup dari 400 (contoh)
+#   -> 384 hidup dari 4017 dicek (91s); 183 transparan dibuang -> 201 berguna
 
 # 3. ekspor
 ./run.sh export --format txt
@@ -57,7 +57,10 @@ Parameter `check`/`update`: `--workers` (default 200), `--timeout` (12s),
 ```
 
 `data/alive.json` — proxy yang terbukti hidup, plus `egress` (IP keluar asli),
-`ms` (latensi), `tcp_ms`.
+`ms` (latensi), `tcp_ms`, `transparent` (true bila egress == IP kita).
+
+Contoh hasil nyata: **57408 raw → 4017 (port 80/443/8080) → 384 hidup → 201 berguna**
+(183 transparan dibuang). 17 di antaranya terbukti bisa mencapai `accounts.x.ai`.
 
 ## ⚠️ Catatan penting
 
