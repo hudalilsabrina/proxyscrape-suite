@@ -102,3 +102,26 @@ Command `xai` memfilter proxy yang benar-benar bisa mencapai `accounts.x.ai`
 ```
 
 grok-suite memakainya otomatis lewat `./run.sh refresh-proxies`.
+
+## 🔒 scan-secrets.sh — cek sebelum publish
+
+Utility untuk memastikan **tidak ada data sensitif** yang ikut ter-upload
+(kredensial, API key, proxy ber-auth, endpoint pribadi, file akun).
+
+```bash
+./scan-secrets.sh            # scan repo ini
+./scan-secrets.sh /path/repo # scan repo lain
+./test-scan-secrets.sh       # uji detektornya (8 kasus)
+```
+
+Cek **dua lapis**:
+1. **working tree** — hanya file yang ter-track
+2. **git history** — SEMUA commit (file yang sudah dihapus pun ketahuan)
+
+Keluar `exit 1` kalau ada temuan CRITICAL → jangan publish.
+
+Menandai baris yang sengaja memuat pola palsu (fixture/contoh):
+
+```python
+FAKE = "sk-..."  # scan-secrets:allow
+```
